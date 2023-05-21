@@ -2,14 +2,16 @@
 title: "COVID 19 Data Analysis"
 output:
   word_document: default
-  pdf_document: default
   html_document: default
+  pdf_document: default
 date: "2023-05-13"
 ---
 
 # Intorduction:
 
-This is the final project for the Data Science as a Field course (DTSA 5301). In this project, we will analyze a COVID-19 dataset available on GitHub. I will guide you through the analysis I have conducted in this project, with a focus on analyzing the US dataset. I will address the following objectives specifically for Washington state:
+This is the final project for the Data Science as a Field course (DTSA 5301). In this project, we will analyze a COVID-19 dataset available on GitHub. I will guide you through the analysis I have conducted in this project, with a focus on analyzing the US dataset. I will address the following Questions of interest for Washington state.
+
+### Questions of Interest: 
 
 - Creating reproducible code that can be verified by my peers.
 - Cleaning and analyzing the data to answer the following questions about Washington state:

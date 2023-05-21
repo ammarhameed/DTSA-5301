@@ -2,9 +2,9 @@
 title: 'NYPD Shooting Incidents Report '
 output:
   word_document: default
+  pdf_document: default
   html_document:
     df_print: paged
-  pdf_document: default
 date: "5/20/2023"
 ---
 
@@ -13,10 +13,16 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```
 
-## Problem Statement  
+## Problem Statement:  
 
 New York City is one of the biggest cities in the US, it attracts millions of visitors each year, gun violence concerns many of the city visitors, shooting incidents and deaths are increasing at an alarming rate recently. Starting 2020 the gun violence has increased dramatically, what is the reason for this increase? Is it happening at a specific time of the day? Is it happening more in some boroughs or is it happening at the same rate across multiple ones? Is it happening to a certain age group? How are these shootings leading to deaths? I'm going to investigate some of the questions in the analysis below. 
 
+### Questions of Interest: 
+- Incidents distribution by year.
+- Incidents distribution by time.
+- Are these incidents happening to a certain age group.
+- Safest hours to go out.
+- Borough with the highest shooting incidents. 
 
 This following goes through the NYPD Shooting Incidents csv data that is available in <https://data.cityofnewyork.us/api/views/833y-fsy8/rows.csv?accessType=DOWNLOAD>
 
