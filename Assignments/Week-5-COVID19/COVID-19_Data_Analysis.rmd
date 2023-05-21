@@ -1,0 +1,433 @@
+---
+title: "COVID 19 Data Analysis"
+output:
+  word_document: default
+  pdf_document: default
+  html_document: default
+date: "2023-05-13"
+---
+
+# Intorduction:
+
+This is the final project for the Data Science as a Field course (DTSA 5301). In this project, we will analyze a COVID-19 dataset available on GitHub. I will guide you through the analysis I have conducted in this project, with a focus on analyzing the US dataset. I will address the following objectives specifically for Washington state:
+
+- Creating reproducible code that can be verified by my peers.
+- Cleaning and analyzing the data to answer the following questions about Washington state:
+  - What is the infection rate of COVID-19 per county in Washington state?
+  - Which are the top 3 counties in terms of COVID-19 cases?
+  - Predicting COVID-19 deaths in Washington state using a linear regression model.
+
+### Before we start:
+Please note that this project uses the package tidyverse, if it's not installed, run the following two commands in R or R-Studio console `install.packages("tidyverse")`.
+If this is your first time using RStudio please note that you might also need to install tinytex using the following `install.packages("tinytex")`
+
+# Project steps
+
+## Step 1: This step involves the following:
+
+1- Import the following libraries: 
+
+```{r library, warning = FALSE}
+library(tidyverse)
+library(lubridate)
+library(ggplot2)
+library(dplyr)
+```
+
+2- Download the data set from the following source `https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/`
+
+```{r download, warning = FALSE}
+base_url <- ("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/")
+
+# The vector that has all the CSV file names, I'm only interested in the US cases and deaths data sets
+
+csv_file_names <- 
+  c("time_series_covid19_confirmed_US.csv",
+  "time_series_covid19_deaths_US.csv")
+
+file_urls <- str_c(base_url, csv_file_names)
+
+Raw_US_Cases <- read_csv(file_urls[1])
+Raw_US_Deaths <- read_csv(file_urls[2])
+```
+
+## Step 2: This step will tidy and/or transform the data to make it ready for the visualization steps:
+
+This step will involve the following:
+
+- Cleaning the US Cases dataset by removing unnecessary data for our analysis and viewing a summary of the data. As you can see in the summary below, the minimum number of cases at the time of importing the dataset has a negative value. To address this, I added a filter to include only cases larger than or equal to 0. Although the filter step can be combined, I am analyzing the data step by step for clarity.
+
+```{r warning = FALSE}
+US_cases <- Raw_US_Cases %>%
+  pivot_longer(cols = -(UID:Combined_Key), names_to = "date", values_to = "cases")  %>%
+  select(Admin2:cases) %>%
+  mutate(date = mdy(date))%>%
+  select(-c(Lat, Long_))
+```
+
+- Print a summary of the US_cases and make sure that we have what we need.
+```{r warning = FALSE}
+US_cases <- US_cases %>%
+  filter(cases >= 0)
+
+# Print a summar of the US_cases
+summary(US_cases)
+```
+
+- US_cases has the following columns:
+
+  - ***Admin2***: County name.
+  - ***Province_State***: State.
+  - ***Country_Region***: US.
+  - ***Combined_Key***: County and state.
+  - ***date***: Date in Year-Month-Day format.
+  - ***cases***: COVID19 cases.
+
+
+##### And repeat the same thing for the US Deaths. 
+
+```{r warning = FALSE}
+US_deaths <- Raw_US_Deaths %>%
+  pivot_longer(cols = -(UID:Population), names_to = "date", values_to = "deaths")  %>%
+  select(Admin2:deaths) %>%
+  mutate(date = mdy(date))%>%
+  select(-c(Lat, Long_))
+
+US_deaths <- US_deaths %>%
+  filter(deaths >= 0)
+
+# Print a summary of hte US_deaths
+summary(US_deaths)
+```
+
+- US_deaths has the following columns:
+
+  - ***Admin2***: County name.
+  - ***Province_State***: State.
+  - ***Country_Region***: US.
+  - ***Combined_Key***: County and state.
+  - ***date***: Date in Year-Month-Day format.
+  - ***Population***: County population
+  - ***deaths***: COVID19 deaths.
+
+- Finally we need to join the two data sets, we end up with a combined data set named US.
+
+```{r warning = FALSE}
+US <- US_cases %>% 
+  full_join(US_deaths)
+
+# Pring a summar of the US
+summary(US)  
+  
+```
+- And finally these are the columns of the US:
+
+  - ***Admin2***: County name.
+  - ***Province_State***: State.
+  - ***Country_Region***: US.
+  - ***Combined_Key***: County and state.
+  - ***date***: Date in Year-Month-Day format.
+  - ***cases***: COVID19 cases.
+  - ***Population***: County population
+  - ***deaths***: COVID19 deaths.
+
+
+- Now that we have the data cleaned up a bit, we'll work on grouping, summarizing and adding new fields that will be very useful when we start visualizing the data.
+
+```{r warning = FALSE}
+# Group the data by (Province_State, Country_Region, date) to get the sum of cases, deaths and population, and add deaths per million
+US_by_state <- US %>% 
+  group_by(Province_State, Country_Region, date) %>% 
+  summarize(cases = sum(cases), deaths = sum(deaths), Population = sum(Population)) %>% 
+  mutate(deaths_per_mill = deaths * 1000000 / Population) %>% 
+  select(Province_State, Country_Region, date, cases, deaths, deaths_per_mill, Population) %>% 
+  ungroup()
+
+```
+
+- Let's print a summary of what we have so far.
+```{r warning = FALSE}
+summary(US_by_state)  
+```
+
+- Next we'll group the data by the Country_Region and Date, so for each date we'll see how many cases there are. 
+
+```{r tidy16, warning = FALSE}
+US_totals <- US_by_state %>% 
+  group_by( Country_Region, date) %>% 
+  summarize(cases = sum(cases), deaths = sum(deaths), Population = sum(Population)) %>% 
+  mutate(deaths_per_mill = deaths * 1000000 / Population) %>% 
+  select(Country_Region, date, cases, deaths, deaths_per_mill, Population) %>% 
+  ungroup()
+
+US_totals
+
+summary(US_totals)  
+```
+
+## Step 3: Visualize and analyze the data: 
+
+- We start by graphing the data in the of US_totals which will show the total cases and deaths per day.
+
+```{r graphing1, warning = FALSE}
+US_totals %>% 
+  ggplot(aes(x = date, y = cases)) + 
+  geom_point(aes(color = "cases")) + 
+  geom_point(aes(y = deaths, color = "deaths")) + 
+  scale_y_log10() + theme(legend.position = "bottom", axis.text.x = element_text(angle = 90)) + 
+  labs(title = "COVID19 in US", x = "Date", y = "Cases/Deaths")
+  
+```
+
+
+- We will now introduce additional variables to track the daily new cases and new deaths. These values will be calculated by subtracting the current number of deaths from the corresponding figure recorded one week prior. This specific choice of a one-week interval allows for a smoother graph representation.
+
+```{r graphing3, warning = FALSE}
+lag_value = 7
+
+US_totals <- US_totals %>% 
+  mutate(new_cases = cases - lag(cases, lag_value), new_deaths = deaths - lag(deaths, lag_value)) 
+
+US_totals %>%
+  ggplot(aes(x = date, y = new_cases)) + 
+  geom_line(aes(color = "new_cases")) + 
+  geom_point(aes(color = "new_cases")) + 
+  geom_line(aes(y = new_deaths, color = "new_deaths")) + 
+  geom_point(aes(y = new_deaths, color = "new_deaths")) + 
+  scale_y_log10() + 
+  theme(legend.position = "bottom", axis.text.x = element_text(angle = 90)) + 
+  labs(title = "COVID19 in US - 1 Week Lag", x = "Date", y = "New Cases/Deaths")
+
+```
+
+- Let's now visualize the data with a 30-day lag. 
+
+```{r graphing4, warning = FALSE}
+lag_value = 30
+
+US_totals <- US_totals %>% 
+  mutate(new_cases = cases - lag(cases, lag_value), new_deaths = deaths - lag(deaths, lag_value)) 
+  
+US_totals %>%
+  ggplot(aes(x = date, y = new_cases)) + 
+  geom_line(aes(color = "new_cases")) + 
+  geom_point(aes(color = "new_cases")) + 
+  geom_line(aes(y = new_deaths, color = "new_deaths")) + 
+  geom_point(aes(y = new_deaths, color = "new_deaths")) + 
+  scale_y_log10() + 
+  theme(legend.position = "bottom", axis.text.x = element_text(angle = 90)) + 
+  labs(title = "COVID19 in US - 1 Month Lag", x = "Date", y = "New Cases/Deaths")
+```
+
+- Additionally, let's explore the yearly increase, considering that we now have data spanning multiple years. We will examine the increase in cases per year. What I noticed in the graph below is that it looks like there is a substantial decrease in the number of deaths.  
+
+```{r graphing5, warning = FALSE}
+lag_value = 365
+
+US_by_state <- US_by_state %>% 
+  mutate(new_cases = cases - lag(cases, lag_value), new_deaths = deaths - lag(deaths, lag_value)) 
+
+US_totals <- US_totals %>% 
+  mutate(new_cases = cases - lag(cases, lag_value), new_deaths = deaths - lag(deaths, lag_value)) 
+  
+US_totals %>%
+  ggplot(aes(x = date, y = new_cases)) + 
+  geom_line(aes(color = "new_cases")) + 
+  geom_point(aes(color = "new_cases")) + 
+  geom_line(aes(y = new_deaths, color = "new_deaths")) + 
+  geom_point(aes(y = new_deaths, color = "new_deaths")) + 
+  scale_y_log10() + 
+  theme(legend.position = "bottom", axis.text.x = element_text(angle = 90)) + 
+  labs(title = "COVID19 in US - 1 Year Lag", x = "Date", y = "New Cases/Deaths")
+```
+
+- Now, let's shift our focus to Washington state. As we examine the graphs below, we can see that Washington state is following the same overall trend as depicted earlier for the entire United States.
+
+```{r echo=FALSE, warning = FALSE}
+lag_value = 7
+
+US_by_state <- US_by_state %>% 
+  mutate(new_cases = cases - lag(cases, lag_value), new_deaths = deaths - lag(deaths, lag_value)) 
+
+state <- "Washington" 
+
+US_by_state %>% 
+  filter(Province_State == state ) %>%
+  filter(cases > 0) %>%
+  ggplot(aes(x = date, y = new_cases)) + 
+  geom_line(aes(color = "new_cases")) + 
+  geom_point(aes(color = "new_cases")) + 
+  geom_line(aes(y = new_deaths, color = "new_deaths")) + 
+  geom_point(aes(y = new_deaths, color = "new_deaths")) + 
+  scale_y_log10() + theme(legend.position = "bottom", axis.text.x = element_text(angle = 90)) + 
+  labs(title = "COVID19 in WA State - 1 Week Lag", x = "Date", y = "New Cases/Deaths")
+
+
+lag_value = 30
+
+US_by_state <- US_by_state %>% 
+  mutate(new_cases = cases - lag(cases, lag_value), new_deaths = deaths - lag(deaths, lag_value)) 
+
+state <- "Washington" 
+
+US_by_state %>% 
+  filter(Province_State == state ) %>%
+  filter(cases > 0) %>%
+  ggplot(aes(x = date, y = new_cases)) + 
+  geom_line(aes(color = "new_cases")) + 
+  geom_point(aes(color = "new_cases")) + 
+  geom_line(aes(y = new_deaths, color = "new_deaths")) + 
+  geom_point(aes(y = new_deaths, color = "new_deaths")) + 
+  scale_y_log10() + theme(legend.position = "bottom", axis.text.x = element_text(angle = 90)) + 
+  labs(title = "OVID19 in WA State - 1 Month Lag", x = "Date", y = "New Cases/Deaths")
+
+
+
+lag_value = 365
+
+US_by_state <- US_by_state %>% 
+  mutate(new_cases = cases - lag(cases, lag_value), new_deaths = deaths - lag(deaths, lag_value)) 
+
+state <- "Washington" 
+
+US_by_state %>% 
+  filter(Province_State == state ) %>%
+  filter(cases > 0) %>%
+  ggplot(aes(x = date, y = new_cases)) + 
+  geom_line(aes(color = "new_cases")) + 
+  geom_point(aes(color = "new_cases")) + 
+  geom_line(aes(y = new_deaths, color = "new_deaths")) + 
+  geom_point(aes(y = new_deaths, color = "new_deaths")) + 
+  scale_y_log10() + theme(legend.position = "bottom", axis.text.x = element_text(angle = 90)) + 
+  labs(title = "OVID19 in WA State - 1 Year Lag", x = "Date", y = "New Cases/Deaths")
+```
+
+- Let's proceed by grouping the counties and aggregating the number of cases. In addition, I'll apply a filter to exclude some data from Washington state, such as "Unassigned" and "Out of WA," as they seem to contain some missing data.
+
+```{r warning = FALSE}
+# Filter Washington state only, and remove "Unassigned" and "Out of WA" data.
+WA_state <- US %>%
+  filter(Province_State == "Washington") %>%
+  filter(Admin2 != "Unassigned") %>%
+  filter(Admin2 != "Out of WA") %>%
+  mutate(new_cases = cases - lag(cases), new_deaths = deaths - lag(deaths), death_rate = deaths/cases) 
+
+# Check the data.
+tail(WA_state)
+  
+# Group by counties 
+WA_state_by_counties <- WA_state %>%
+  group_by(Admin2) %>%
+  summarize(total_cases = sum(cases), 
+            total_deaths = sum(deaths), 
+            Population = sum(Population), 
+            ) %>%
+  ungroup() 
+
+# Print a summary of the data we have so far and make sure it's good
+summary(WA_state)  
+  
+summary(WA_state_by_counties)  
+```
+
+- Let's create a visualization by graphing the population and the total number of cases per county. This will provide a clear visual representation of how the cases are distributed across different counties based on their respective populations.
+
+```{r warning = FALSE}
+# First we need to pivot the data so we can group the Population and the total cases together
+WA_state_by_counties_pivoted <- WA_state_by_counties %>%   
+  pivot_longer(cols=c('total_cases', 'Population'), names_to='variable', 
+  values_to="value")
+
+WA_state_by_counties_pivoted
+
+# Graph both the total number of cases and deaths by county.
+WA_state_by_counties_pivoted %>% 
+  ggplot(aes(fill=variable, x = Admin2, y = value)) + 
+  geom_bar(position="dodge", stat="identity") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  labs(title = "Cases/Deaths per county in Washington", x = "County", y = NULL)
+
+
+```
+
+- Next, we will proceed to display the infection rate per county and highlight the top 3 counties. This visualization allows us to identify the counties with the highest infection rates and gain insights into the distribution of COVID-19 cases across different regions.
+
+```{r warning = FALSE}
+# Calulate the rate of infection 
+WA_state_by_counties <- WA_state_by_counties %>%
+  mutate(infection_rate = total_cases * 100/ Population)
+
+# Print the max infection rate to make sure mutate worked.
+max(WA_state_by_counties$infection_rate)
+
+WA_state_by_counties_pivoted <- WA_state_by_counties %>%   
+  pivot_longer(cols=c('total_cases', 'infection_rate'), names_to='variable', 
+  values_to="value")
+
+WA_state_by_counties_pivoted
+
+top_3_counties <- WA_state_by_counties %>% 
+  arrange(desc(infection_rate)) %>% 
+  top_n(3, infection_rate)
+
+WA_state_by_counties %>% 
+  arrange(WA_state_by_counties, desc(infection_rate)) %>%
+  ggplot(aes(x = Admin2, y = infection_rate)) + 
+  geom_bar(stat="identity")  +
+  geom_point(data = top_3_counties, aes(x = Admin2, y = infection_rate, color = "top 3"), size = 2) +
+  scale_color_manual(name = "", values = c("top 3" = "red")) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  ylim(0, 30)+
+  labs(title = "COVID19 in US", x = "County", y = "Infection Rate")
+```
+
+
+- To predict the number of COVID-19 deaths based on the reported cases, we will employ a linear regression model. By utilizing this linear model, we can predict the deaths based on the cases.
+
+```{r warning = FALSE}
+# Let's see if we can predict the deaths per thousand 
+WA_state <- US %>%
+  filter(Province_State == "Washington", cases > 0, Population > 0) %>%
+  group_by(Admin2) %>%
+  summarize(deaths = max(deaths), 
+            cases = max(cases),
+            Population = max(Population),
+            cases_per_thousand = cases * 1000 /Population,
+            deaths_per_thousand = deaths * 1000 /Population,
+            ) %>%
+  ungroup()
+  
+WA_state
+
+# let's model the data 
+model <- lm(deaths_per_thousand ~ cases_per_thousand, data = WA_state)
+
+summary(model)
+
+WA_state_with_predictions <- WA_state %>% mutate(pred=predict(model))
+
+WA_state_with_predictions
+
+WA_state_with_predictions %>%
+  ggplot() + 
+  geom_point(aes(x = cases_per_thousand, y = deaths_per_thousand), color = "red") + 
+  geom_point(aes(x = cases_per_thousand, y = pred), color = "blue") +
+  labs(title = "Linear Model - WA State - Predicting deaths per thousand", x = "Cases per thousand", y = "Deaths per thousand")
+  
+```
+
+
+## Conclusion
+  - Based on the infection rate, the top 3 counties are Franklin, Grant, and Yakima.
+  - The number of deaths shows a downward trend. It would be valuable to incorporate additional data such as vaccination records to evaluate the potential positive impact of vaccines.
+  - Although the linear regression model fits the data, a more appropriate model, such as logistic regression, may better capture the underlying patterns.
+
+## Bias
+1- It is crucial to approach the analysis of such data/reports with caution, as they can be subject to various biases. Questions arise regarding the data collection process, such as who is responsible for gathering the data and whether there are established data compliance protocols in place. Are the reported deaths accurately documented across all counties? Additionally, we must consider the accuracy of data entry and potential inconsistencies. If certain groups, counties, or regions are systematically favored in the data collection process, sampling bias can be introduced. Similarly, selective reporting of data can introduce reporting bias, impacting the overall analysis.
+
+2- Another important consideration is to focus on rates rather than absolute numbers. Comparing the number of cases or deaths between different regions or counties without considering the infection or death rates can lead to erroneous conclusions. It is essential to assess the rate of infection and/or deaths to make informed decisions and avoid misinterpretations based solely on the raw numbers.
+
+```{r warning = FALSE}
+
+```
+

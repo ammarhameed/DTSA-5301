@@ -1,0 +1,213 @@
+---
+title: 'NYPD Shooting Incidents Report '
+output:
+  word_document: default
+  pdf_document: default
+  html_document:
+    df_print: paged
+date: "5/20/2023"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+## Problem Statement  
+
+New York City is one of the biggest cities in the US, it attracts millions of visitors each year, gun violence concerns many of the city visitors, shooting incidents and deaths are increasing at an alarming rate recently. Starting 2020 the gun violence has increased dramatically, what is the reason for this increase? Is it happening at a specific time of the day? Is it happening more in some boroughs or is it happening at the same rate across multiple ones? Is it happening to a certain age group? How are these shootings leading to deaths? I'm going to investigate some of the questions in the analysis below. 
+
+
+This following goes through the NYPD Shooting Incidents csv data that is available in <https://data.cityofnewyork.us/api/views/833y-fsy8/rows.csv?accessType=DOWNLOAD>
+
+
+### Before we start:
+Please note that this project uses the package tidyverse, if it's not installed, run the following two commands in R or R-Studio console `install.packages("tidyverse")`.
+If this is your first time using RStudio please note that you might also need to install tinytex using the following `install.packages("tinytex")`
+
+### Step 1: This step involves the following:
+  - Download the data.
+  - Import the tidyverse and the lubridate libraries.
+  - View the internal structure of the data frame.
+```{r, echo=FALSE}
+data_url <- "https://data.cityofnewyork.us/api/views/833y-fsy8/rows.csv?accessType=DOWNLOAD"
+
+library(tidyverse)
+library(lubridate)
+library(ggplot2)
+
+data <- read_csv(data_url)
+
+str(data)
+```
+
+
+### Step 2: This step will tidy and/or transform the data to make it ready for the visualization steps.
+
+
+
+```{r, echo=FALSE}
+data <- data %>% mutate(date=mdy(OCCUR_DATE)) %>% 
+  mutate(hour=as.numeric(format(strptime(data$OCCUR_TIME,"%H:%M:%S"),'%H') )) %>% 
+  mutate(shot = 1)  %>% 
+  mutate(Dead = ifelse(STATISTICAL_MURDER_FLAG=="TRUE", "Yes", "No") )
+
+data <- data %>% mutate(date=mdy(OCCUR_DATE)) %>% mutate(year=year(date) )
+
+group_by_year <-  data %>%  group_by(year) %>% summarize(incidents = n()) 
+
+### Let's view how grouping by year looks like
+
+group_by_year
+
+```
+
+
+### Step 3: Let's graph the data now:
+-   As you can see below the shooting incidents have been dropping since 2011, then there is a big spike that starts in 2020.
+
+
+```{r graphing, echo=TRUE}
+
+data <- data %>% 
+  mutate(date=mdy(OCCUR_DATE)) %>% 
+  mutate(hour=as.numeric( format(strptime(data$OCCUR_TIME,"%H:%M:%S"),'%H') )) %>% 
+  mutate(shot = 1)  %>% mutate(Dead = ifelse(STATISTICAL_MURDER_FLAG=="TRUE", "Yes", "No") )
+
+data <- data %>% mutate(date=mdy(OCCUR_DATE)) %>% mutate(year=year(date) )
+
+group_by_year <-  data %>%  group_by(year) %>% summarize(incidents = n()) 
+
+group_by_year %>%  ggplot(aes(x = year, y = incidents)) +
+geom_line(aes(y =incidents, color = "incidents")) +
+geom_point(alpha = 1, aes(color = "incidents")) #+scale_y_log10()
+
+```
+
+
+-   Another way to look into the data is by graphing the data a bit differently as shown below. We do need to transform the data a bit to make it work.
+
+```{r graphing2, echo=TRUE}
+
+# group_by_year_date_and_death <- data %>%  group_by(year, STATISTICAL_MURDER_FLAG) %>% summarize(incidents = n()) 
+
+group_by_year_date_and_death <- data %>%  group_by(year, Dead) %>% summarize(incidents = n()) 
+
+```
+
+
+-   What I have done here is look at the data from another lens, where we group the data based on the incidents and deaths, then graph it.
+```{r graphing3, echo=TRUE}
+group_by_year_date_and_death %>% 
+  ggplot(aes(x =  year, y =  incidents, shape = Dead)) +  geom_point() +
+labs(x = "Year", y = "incidents", title='Incidents And Deaths') 
+
+```
+
+
+-   Another way to look at the data is to view when these incidents occur during the day, as you can see it increases in the evening and starts dropping around 5AM.
+
+```{r graphing4, echo=TRUE}
+
+count_shooting_by_hour <-  data %>% 
+  select(INCIDENT_KEY, hour, OCCUR_TIME, PERP_SEX, VIC_SEX, PRECINCT) %>% 
+  group_by(hour) %>% summarize(incidents = n()) 
+
+count_shooting_by_BORO <-  data %>%  group_by(BORO) %>% summarize(incidents = n()) 
+
+
+count_shooting_by_PRECINCT <-  data %>%  group_by(PRECINCT) %>% summarize(incidents = n()) 
+
+count_shooting_by_PERP_SEX <-  data %>%  group_by(PERP_SEX) %>% summarize(incidents = n()) 
+
+count_shooting_by_hour
+
+# view(count_shooting_by_hour)
+
+### Shooting incidents seem to start increasing at night and stop goes down in the morning/afternoon
+count_shooting_by_hour %>% ggplot(aes(x = hour, y = incidents)) +
+geom_line(aes(y =incidents, color = "incidents")) +
+geom_point(alpha = 1, aes(color = "hour")) #+scale_y_log10()
+```
+data
+
+
+  
+-   Another graph shows the shooting incidents by Borough.
+
+```{r graphing5, echo=TRUE}
+grouped_by_boro <- data %>%  
+  group_by(BORO) %>%
+  count() %>% 
+  ungroup()
+
+grouped_by_boro %>%
+  ggplot(aes(x = BORO, y = n)) +
+  geom_bar(stat='identity') + 
+  labs(title = "Incidents By Boro", x = "Boroughs", y = "Incidents")
+ 
+
+```
+
+
+-   Another graph shows the shooting incidents by age group, 25 to 44 is the Highest.
+
+```{r graphing6, echo=TRUE}
+
+# There is a group names 1122 that seems to be a typo, it has a value of 1, I'm filtering it out before graphing
+grouped_by_age_group <- data %>%  
+  filter(VIC_AGE_GROUP != "1022") %>%
+  group_by(VIC_AGE_GROUP)   %>%
+  count() %>% 
+  ungroup()
+
+
+summary(grouped_by_age_group)
+
+grouped_by_age_group %>%
+  ggplot(aes(x = VIC_AGE_GROUP, y = n)) +
+  geom_bar(stat='identity') + 
+  labs(title = "Incidents by age group", x = "Age Group", y = "Incidents")
+ 
+```
+
+### Step 4: Apply a linear model
+
+-   Finally I'll be using the same graph but this time with a linear model, the linear model is applied on both outcomes, the incidents that led to deaths and the ones that didn't didn't lead to deaths.
+
+```{r linearmodel, echo=TRUE}
+
+group_by_year_date_and_death %>% ggplot(aes(x =  year, y =  incidents, color = Dead)) +  
+geom_point() +
+labs(x = "Year", y = "Incidents", title='Incidents And Deaths') +
+geom_smooth(method = "lm")
+```
+
+
+
+```{r linearmodel2, echo=TRUE}
+grouped_incidents_and_deaths_by_date <- data %>%   
+  group_by(year) %>%
+  summarize(deaths = sum(Dead == "Yes"), 
+            incidents = n()
+  ) %>%
+  ungroup()
+grouped_incidents_and_deaths_by_date
+
+grouped_incidents_and_deaths_by_date %>% ggplot(aes(x =  incidents, y =  deaths)) +  
+geom_point() +
+labs(x = "Incidents", y = "Deaths", title='Predicting Deaths based on Incidents') +
+geom_smooth(method = "lm", se=FALSE)
+``` 
+
+
+### Conclusion
+  - The number of incidents increased significantly around 2020.
+  - Safe hours to be out in the boroughs according to this data is between ~6AM and 2PM.
+  - Highest shooting incidents are in Brooklyn.
+  - Highest shooting incidents based on age are between 25-44.
+
+### Bias
+##### We need to be careful when we analyze such data/reports, many biases can be present here, for example, who is collecting the data? Is there any data compliance that these reports go through or follow? What about the data entry, are these accurate? When these data are being entered, is it the time of the shooting? or after a few days?  
+
+##### Another thing I was looking at that we need to be careful about is the age group, as noted above 25 to 44 seems to have the highest number of incidents, but I think that makes sense since maybe this group is the one that has big representation, this age group is simply out more that other age groups.
