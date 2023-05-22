@@ -2,28 +2,28 @@
 title: "COVID 19 Data Analysis"
 output:
   word_document: default
-  html_document: default
   pdf_document: default
+  html_document: default
 date: "2023-05-13"
 ---
 
-# Intorduction:
+# Introduction:
 
-This is the final project for the Data Science as a Field course (DTSA 5301). In this project, we will analyze a COVID-19 dataset available on GitHub. I will guide you through the analysis I have conducted in this project, with a focus on analyzing the US dataset. I will address the following Questions of interest for Washington state.
+This is the final project for the Data Science as a Field course (DTSA 5301). In this project, we will analyze a COVID-19 data set available on the Center for Systems Science and Engineering (CSSE) at Johns Hopkins University Github repository as it's a reliable source. I'll be dropping, cleaning and modifying multiple data points, I will be pointing out each change as I do it. And, I will guide you through the analysis I have conducted in this project, with a focus on analyzing the US data set, I will address the following Questions of interest for Washington state.
 
-### Questions of Interest: 
+### Objectives and Questions of Interest: 
 
 - Creating reproducible code that can be verified by my peers.
 - Cleaning and analyzing the data to answer the following questions about Washington state:
   - What is the infection rate of COVID-19 per county in Washington state?
-  - Which are the top 3 counties in terms of COVID-19 cases?
+  - What are the three counties with the highest number of COVID-19 cases?
   - Predicting COVID-19 deaths in Washington state using a linear regression model.
 
 ### Before we start:
 Please note that this project uses the package tidyverse, if it's not installed, run the following two commands in R or R-Studio console `install.packages("tidyverse")`.
 If this is your first time using RStudio please note that you might also need to install tinytex using the following `install.packages("tinytex")`
 
-# Project steps
+# Project steps:
 
 ## Step 1: This step involves the following:
 
@@ -380,7 +380,7 @@ WA_state_by_counties %>%
   scale_color_manual(name = "", values = c("top 3" = "red")) +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
   ylim(0, 30)+
-  labs(title = "COVID19 in US", x = "County", y = "Infection Rate")
+  labs(title = "Infection Rate in WA State - Top 3 counties ", x = "County", y = "Infection Rate")
 ```
 
 
@@ -429,7 +429,6 @@ WA_state_with_predictions %>%
 
 2- Another important consideration is to focus on rates rather than absolute numbers. Comparing the number of cases or deaths between different regions or counties without considering the infection or death rates can lead to erroneous conclusions. It is essential to assess the rate of infection and/or deaths to make informed decisions and avoid misinterpretations based solely on the raw numbers.
 
-```{r warning = FALSE}
+3- A personal bias might also affect how we analyze the data, for example, my political beliefs might influence my analysis, another one is confirmation bias, where we selectively focus on information that aligns with our beliefs. 
 
-```
-
+We need to be aware of our biases so that we can avoid them and provide an objective analysis.
