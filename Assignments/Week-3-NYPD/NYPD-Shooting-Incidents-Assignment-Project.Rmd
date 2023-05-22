@@ -2,9 +2,9 @@
 title: 'NYPD Shooting Incidents Report '
 output:
   word_document: default
-  pdf_document: default
   html_document:
     df_print: paged
+  pdf_document: default
 date: "5/20/2023"
 ---
 
@@ -17,7 +17,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 New York City is one of the biggest cities in the US, it attracts millions of visitors each year, gun violence concerns many of the city visitors, shooting incidents and deaths are increasing at an alarming rate recently. Starting 2020 the gun violence has increased dramatically, what is the reason for this increase? Is it happening at a specific time of the day? Is it happening more in some boroughs or is it happening at the same rate across multiple ones? Is it happening to a certain age group? How are these shootings leading to deaths? I'm going to investigate some of the questions in the analysis below. 
 
-### About the data set, 
+### About the data set:
 We'll be using a historical data from the NYPD, available at https://data.cityofnewyork.us/api/views/833y-fsy8/rows.csv?accessType=DOWNLOAD, it captures shooting incidents from 2006 to 2022, the data set has some missing information and typos, for example on the Victim Age Group has a group named 1022, which doesn't follow the other group names, usually it's written with a hyphen, and also it has only 1 value. The perpetrator age group is also unknown in many cases so I decided to focus on the victim age group. Throughout the following analysis, I'll be dropping, cleaning and modifying multiple data points, I will be pointing out each change as I do it. 
 
 
